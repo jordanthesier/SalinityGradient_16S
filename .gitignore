@@ -1,0 +1,3 @@
+*.fastq.qz
+*/*.fastq.gz
+*/*/*.fastq.gz
