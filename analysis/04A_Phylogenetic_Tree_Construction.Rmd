@@ -1,0 +1,124 @@
+---
+title: "04A_Phylogenetics_Tree_Construction"
+author: "Jordan"
+date: "2025-03-19"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Goals
+The goal is to make a phylogenetic tree!
+
+1. Load in our preprecessed phyloseq object (raw_preprecesses_phyloseq.RData).
+2. Create ASV fasta file from the phyloseq object.
+3. Align the 16S sequences from our fatsa file with MAFFT.
+4. Create a maximum likelihood tree using FastTree2.
+
+### Inputs
+1. raw_preprocessed_physeq.RData
+
+## Outputs 
+1. MAFFT_aligned_ASV.fasta
+2. ASVs_unrooted.tree
+
+
+# Set seed
+
+```{r set-seed}
+set.seed(238438)
+```
+
+# Load Packages and Phyloseq Object
+
+```{r load-envi}
+#Install phytools
+remotes::install_github("liamrevell/phytools")
+
+#Install ggtree
+devtools::install_github("GuangchuangYu/ggtree")
+
+pacman::p_load(phytools, ggtree, tidyverse, phyloseq, install = FALSE)
+
+#Load Physeq
+load("data/03_PreProcessing/raw_preprocessed_physeq.RData")
+
+raw_preprocessed_physeq
+```
+
+# Write ASV fasta file
+
+```{r create-preprocessed-fasta}
+#Pull out ASV sequences and ASV names
+asv_seq_df <-
+  raw_preprocessed_physeq@tax_table %>%
+  data.frame() %>%
+  dplyr::select(ASV, ASVseqs)
+
+#View(asv_seq_df)
+
+#Add ">" to header
+asv_seq_df$ASV <- paste0(">", asv_seq_df$ASV)
+
+#CReate fasta object
+asv_seq_fasta <- c(rbind(asv_seq_df$ASV, asv_seq_df$ASVseqs))
+
+#Write to a fasta file
+write(asv_seq_fasta, file = "data/04_Phylogenetic_Tree/preprocessed_ASVs.fasta")
+```
+
+# Align the 16S sequences from fatsa file with MAFFT
+-`engineengine.opts = '-l'' : this gives us our original terminal base environment
+
+To test shell directly from Rmd: command + option + enter 
+```{r run-MAFFT, engine = 'bash', engine.opts = '-l'}
+#Write bash code to run MAFFT alignment
+
+#Provide path to MAFFT
+export PATH=/programs/mafft/bin:$PATH
+
+#Change directories to provide the fatsa file we made above
+cd data/04_Phylogenetic_Tree
+
+pwd
+
+#set a seed
+RANDOM=238428
+
+#MAFFT already knows we have a nucleotide alignment
+/programs/mafft/bin/mafft --auto preprocessed_ASVs.fasta > MAFFT_aligned_ASVs.fasta
+
+```
+
+# FastTree2
+
+```{r run-fasttree, engine = 'bash', engine.opts = '-l'}
+#Provide our export path to fasttree
+export PATH=/programs/FastTree-2.1.11:$PATH
+
+#Run FastTree to generate phylogenetic tree
+#parameters
+  # -nt: nucleotide alignment
+  # -gtr: generalized time reversible substitution model
+  # -fastest = speed up the model, reduce memory usage (recommended for >50,000)
+  # -log = produce log file
+  # specify the output tree file
+  
+FastTree -nt -gtr -fastest -log FastTree.log MAFFT_aligned_ASVs.fasta > ASVs_unrooted.tree
+
+#Change back to main directory 
+cd ../../
+
+pwd
+
+echo "The working directory is $PWD"
+```
+
+
+
+
+
